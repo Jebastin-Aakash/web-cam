@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam with Object Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+      video, canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Webcam with Object Detection</h1>
+    <video id="videoElement" width="640" height="480" autoplay></video>
+    <canvas id="canvasElement" width="640" height="480"></canvas>
+
+    <script>
+      var video = document.querySelector("#videoElement");
+      var canvas = document.querySelector("#canvasElement");
+      var context = canvas.getContext("2d");
+
+      // Load COCO-SSD model
+      let model;
+      cocoSsd.load().then(loadedModel => {
+        model = loadedModel;
+        console.log("Model loaded!");
+        detectFrame();
+      });
+
+      // Access the webcam
+      if (navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(function (stream) {
+            video.srcObject = stream;
+          })
+          .catch(function (err0r) {
+            console.log("Something went wrong!", err0r);
+          });
+      }
+
+      // Function to detect objects in the video feed
+      function detectFrame() {
+        model.detect(video).then(predictions => {
+          renderPredictions(predictions);
+          requestAnimationFrame(detectFrame); // Continue detecting
+        });
+      }
+
+      // Function to draw the detected objects on the canvas
+      function renderPredictions(predictions) {
+        context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous frame
+        context.drawImage(video, 0, 0, canvas.width, canvas.height); // Draw video frame
+
+        predictions.forEach(prediction => {
+          context.beginPath();
+          context.rect(...prediction.bbox); // Draw bounding box
+          context.lineWidth = 2;
+          context.strokeStyle = 'red';
+          context.fillStyle = 'red';
+          context.stroke();
+          context.fillText(
+            `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+            prediction.bbox[0],
+            prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
+          ); // Label with class and score
+        });
+      }
+    </script>
+  </body>
+</html>
